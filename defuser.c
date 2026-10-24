@@ -77,27 +77,135 @@ int solve_phase_3(uint64_t challenge, char *out, size_t cap) {
     return write_answer(out, cap, values, count);
 }
 
+uint32_t walk(uint32_t target,uint32_t low,uint32_t high,uint32_t salt){
+    uint32_t mid = low+((high-low)>>1);
+
+    if(target==mid) return (mid+3) ^salt;
+    else if(target < mid){
+        uint32_t child = walk(target,low,mid-1,salt);
+        return ((5*child)^(mid+salt))^0x9;
+    }
+    else{
+        uint32_t child = walk(target,mid+1,high,salt);
+        return ((5*child)^(mid+salt))^0x15;
+    }
+}
+
 int solve_phase_4(uint64_t challenge, char *out, size_t cap) {
     uint32_t values[MAX_FIELDS] = {0};
-    size_t count = 0;
+    size_t count = 1;
     (void)challenge;
     // TODO: 根据 phase_04 的汇编，用 challenge 算出口令中的各个整数，依次存入 values，并把 count 改为整数个数。
+
+    uint32_t low,high,target,salt;
+    salt = (uint32_t)(challenge>>7)^(uint32_t)(challenge>>32);
+    target = ((uint32_t)challenge)& 0x7f;
+    high = 0x7f;low=0;
+
+    values[0]=walk(target,low,high,salt);
     return write_answer(out, cap, values, count);
 }
 
 int solve_phase_5(uint64_t challenge, char *out, size_t cap) {
     uint32_t values[MAX_FIELDS] = {0};
-    size_t count = 0;
+    size_t count = 2;
     (void)challenge;
     // TODO: 根据 phase_05 的汇编，用 challenge 算出口令中的各个整数，依次存入 values，并把 count 改为整数个数。
+
+    typedef struct {
+    int next;          
+    uint32_t value;
+    uint32_t mask;
+} Node;
+
+static const int heads[8] = {
+    1, 6, 9, 3, 0, 11, 8, 7
+};
+
+static const Node nodes[12] = {
+    /*  0 */ {11, 0x82f, 0x5f8d},
+    /*  1 */ { 6, 0x01a, 0x1d59},
+    /*  2 */ { 5, 0x94c, 0xaa0d},
+    /*  3 */ { 0, 0x517, 0x5a82},
+    /*  4 */ {10, 0x27a, 0x09e4},
+    /*  5 */ {-1, 0x361, 0xeacc},
+    /*  6 */ { 9, 0x73c, 0x5d12},
+    /*  7 */ { 4, 0x457, 0xfae4},
+    /*  8 */ { 7, 0xb49, 0xda18},
+    /*  9 */ { 3, 0x170, 0xf6ce},
+    /* 10 */ { 2, 0xa0f, 0x425a},
+    /* 11 */ { 8, 0x650, 0xc7e7},
+};
+
+int node_index= heads[(uint32_t)(challenge & 0x7)];
+uint32_t result,last_value;
+result = (uint32_t)(challenge >> 6);
+result ^= (uint32_t)(challenge >> 32);
+result ^= nodes[node_index].mask;
+result ^= 0x3491;
+last_value = nodes[node_index].value;
+result += last_value;
+uint32_t steps = (uint32_t)((challenge >> 3) & 3u);
+
+for(uint32_t i = 0;i<steps;i++){
+    node_index = nodes[node_index].next;
+    result ^= nodes[node_index].mask;
+    last_value = nodes[node_index].value;
+    result += last_value;
+}
+values[0] = result;
+values[1] = last_value;
+count = 2;    
     return write_answer(out, cap, values, count);
 }
 
+
+static uint32_t p6_op_0(uint32_t x) {
+    return (x + 0x2763u) ^ (x >> 5);
+}
+
+static uint32_t p6_op_1(uint32_t x) {
+    return (4u * x + 0xa7edu) ^ (5u * x);
+}
+
+static uint32_t p6_op_2(uint32_t x) {
+    return (x ^ 0x88f1u) + 8u * x;
+}
+
+static uint32_t p6_op_3(uint32_t x) {
+    uint32_t rotated = (x << 2) | (x >> 30);
+    return rotated ^ 0x4e95u;
+}
+
+static uint32_t p6_op_4(uint32_t x) {
+    return (x >> 5) | (x << 27);
+}
+
+static uint32_t p6_op_5(uint32_t x) {
+    return ((x >> 1) ^ x) + 0x1d86u;
+}
 int solve_phase_6(uint64_t challenge, char *out, size_t cap) {
     uint32_t values[MAX_FIELDS] = {0};
     size_t count = 0;
     (void)challenge;
     // TODO: 根据 phase_06 的汇编，用 challenge 算出口令中的各个整数，依次存入 values，并把 count 改为整数个数。
+
+    
+uint32_t first_input =(uint32_t)(challenge >> 6) ^ (uint32_t)(challenge >> 32);
+uint32_t first_index = (uint32_t)(challenge & 7u);
+uint32_t second_index = (uint32_t)((challenge >> 3) & 7u);
+
+    static uint32_t (*const ops[8])(uint32_t) = {
+    p6_op_0, p6_op_4, p6_op_0, p6_op_5,
+    p6_op_3, p6_op_2, p6_op_1, p6_op_2
+};
+
+uint32_t first_result = ops[first_index](first_input);
+uint32_t second_input = first_result ^ 0x6d6u;
+uint32_t second_result = ops[second_index](second_input);
+second_result+=0x9a23;
+values[0]=second_result;
+count=1;
     return write_answer(out, cap, values, count);
 }
 
