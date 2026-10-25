@@ -195,7 +195,7 @@ uint32_t third = second ^ (Q + first + 0xc671u + (P >> 1));
 
 
 
-公开测试:本人实际运行的汇总截图补如下：！[public test](images/public_test.png)。
+公开测试:本人实际运行的汇总截图补如下：![public test](images/public_test.png)。
 
 ## 资料与 AI 辅助说明
 
